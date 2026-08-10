@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Сокращатель ссылок</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background-color: #050505; display: flex; justify-content: center; align-items: center; }
+    #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .vignette { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; background: radial-gradient(ellipse at center, transparent 20%, rgba(0, 0, 0, 0.8) 100%); }
+    .card { position: relative; z-index: 10; width: 100%; max-width: 460px; padding: 32px 30px; background: rgba(10, 10, 10, 0.6); backdrop-filter: blur(40px) saturate(1.2); -webkit-backdrop-filter: blur(40px) saturate(1.2); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7); display: flex; flex-direction: column; gap: 20px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; }
+    .card-title { color: #fff; font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+    .card-badge { font-size: 11px; font-weight: 400; color: rgba(255, 255, 255, 0.35); letter-spacing: 0.5px; text-transform: uppercase; background: rgba(255, 255, 255, 0.04); padding: 4px 14px; border-radius: 40px; border: 1px solid rgba(255, 255, 255, 0.04); }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { color: rgba(255, 255, 255, 0.35); font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 500; }
+    .form-group input { width: 100%; height: 46px; padding: 0 16px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; color: #f0f0f0; font-size: 15px; outline: none; transition: 0.25s ease; }
+    .form-group input:focus { border-color: rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.07); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn-main { width: 100%; height: 48px; background: #f0f0f0; border: none; border-radius: 12px; color: #0a0a0a; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s ease; }
+    .btn-main:hover { background: #ffffff; transform: scale(1.01); }
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .btn-sub { height: 40px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px; color: rgba(255, 255, 255, 0.6); font-size: 13px; font-weight: 500; cursor: pointer; transition: 0.2s ease; }
+    .btn-sub:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+    .btn-danger { color: rgba(255, 120, 120, 0.6); border-color: rgba(255, 100, 100, 0.1); }
+    .btn-danger:hover { background: rgba(255, 50, 50, 0.08); color: #ff9999; }
+    .footer-text { color: rgba(255, 255, 255, 0.3); font-size: 13px; padding: 10px 14px; background: rgba(0, 0, 0, 0.25); border-radius: 10px; min-height: 44px; display: flex; align-items: center; word-break: break-all; }
+    .footer-text.error { color: #ff8a80; border-left: 3px solid #ff5252; }
+    .footer-text.success { color: #a5d6a7; border-left: 3px solid #66bb6a; }
+    .footer-text.info { color: #90caf9; border-left: 3px solid #42a5f5; }
+    .footer-text.clickable { cursor: pointer; }
+    #qrContainer {
+      display: none;
+      position: relative;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 22px 18px 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      animation: qrIn 0.4s cubic-bezier(0.2, 0.9, 0.2, 1);
+    }
+    #qrContainer.visible { display: flex; }
+    #qrClose {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 26px;
+      height: 26px;
+      border: none;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 50%;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      transition: 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #qrClose:hover {
+      background: rgba(255, 80, 80, 0.25);
+      color: #fff;
+      transform: rotate(90deg);
+    }
+    #qrContainer img {
+      width: 180px;
+      height: 180px;
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+    #qrLabel {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    #qrPath {
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 13px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    @keyframes qrIn {
+      from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @media (max-width: 480px) { .card { padding: 24px 18px; } .form-row { grid-template-columns: 1fr; gap: 14px; } .btn-group { gap: 8px; } .btn-sub { font-size: 11px; height: 36px; } .card-title { font-size: 19px; } #qrContainer img { width: 150px; height: 150px; } }
+  </style>
+</head>
+<body>
+  <div id="canvas-container">
+    <canvas id="fluidCanvas"></canvas>
+  </div>
+  <div class="vignette"></div>
+
+  <div class="card">
+
+    <div class="form-group">
+      <label>Длинная ссылка</label>
+      <input type="text" id="originalUrl" value="https://example.com" />
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Короткий путь</label>
+        <input type="text" id="shortPath" value="my-link" />
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" id="password" value="secret123" />
+      </div>
+    </div>
+
+    <button class="btn-main" id="createBtn">Создать</button>
+
+    <div class="btn-group">
+      <button class="btn-sub" id="infoBtn">Инфо</button>
+      <button class="btn-sub" id="qrBtn">QR-код</button>
+      <button class="btn-sub btn-danger" id="deleteBtn">Удалить</button>
+    </div>
+
+    <div id="qrContainer">
+      <button id="qrClose" aria-label="Закрыть">✕</button>
+      <div id="qrLabel">QR-код</div>
+      <img id="qrImg" alt="QR" />
+      <div id="qrPath"></div>
+    </div>
+
+    <div class="footer-text" id="statusMessage">Введите ссылку и нажмите «Создать»</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('fluidCanvas');
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+    ctx.imageSmoothingQuality = 'high';
+
+    const SCALE = 4;
+    const OW = 240, OH = 150;
+    const RW = OW * SCALE, RH = OH * SCALE;
+    const off = document.createElement('canvas');
+    off.width = RW; off.height = RH;
+    const octx = off.getContext('2d', { willReadFrequently: true });
+    octx.scale(SCALE, SCALE);
+
+    const LUT = (() => {
+      const stops = [
+        [0.00,   0,   0,   0],
+        [0.20,  42,   0,  66],
+        [0.38, 140,   0, 135],
+        [0.50, 236,   0, 168],
+        [0.68, 230, 205,   8],
+        [1.00, 255, 242, 130]
+      ];
+      const lut = new Uint8ClampedArray(256 * 3);
+      for (let i = 0; i < 256; i++) {
+        const t = i / 255;
+        let s = 0;
+        while (s < stops.length - 2 && t > stops[s + 1][0]) s++;
+        const a = stops[s], b = stops[s + 1];
+        const k = Math.min(1, Math.max(0, (t - a[0]) / ((b[0] - a[0]) || 1)));
+        lut[i * 3]     = a[1] + (b[1] - a[1]) * k;
+        lut[i * 3 + 1] = a[2] + (b[2] - a[2]) * k;
+        lut[i * 3 + 2] = a[3] + (b[3] - a[3]) * k;
+      }
+      return lut;
+    })();
+
+    function blob(x, y, r, a) {
+      const g = octx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(255,255,255,' + a + ')');
+      g.addColorStop(0.45, 'rgba(255,255,255,' + (a * 0.75) + ')');
+      g.addColorStop(0.8, 'rgba(255,255,255,' + (a * 0.22) + ')');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      octx.fillStyle = g;
+      octx.beginPath();
+      octx.arc(x, y, r, 0, Math.PI * 2);
+      octx.fill();
+    }
+
+    const magenta = [];
+    for (let i = 0; i < 8; i++) {
+      magenta.push({
+        x: Math.random() * OW,
+        y: Math.random() * OH,
+        vx: (Math.random() - 0.5) * 0.22,
+        vy: (Math.random() - 0.5) * 0.22,
+        r: 55 + Math.random() * 70,
+        a: 0.16 + Math.random() * 0.10,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.3 + Math.random() * 0.4
+      });
+    }
+
+    function randomPart() {
+      return {
+        spin: (Math.random() - 0.5) * 0.02,
+        dist: 6 + Math.random() * 16,
+        baseR: 14 + Math.random() * 6,
+        baseA: 0.45 + Math.random() * 0.15,
+        wavePhase: Math.random() * Math.PI * 2
+      };
+    }
+
+    const clump = { t: Math.random() * 100, parts: [] };
+    for (let i = 0; i < 7; i++) {
+      clump.parts.push({
+        ang: Math.random() * Math.PI * 2,
+        current: randomPart(),
+        target: randomPart(),
+        lerp: 0,
+        lerpSpeed: 0.003 + Math.random() * 0.002
+      });
+    }
+
+    const drops = [
+      { bx: 0.78, by: 0.52, baseR: 13, baseA: 0.78, p: Math.random() * 10 },
+      { bx: 0.62, by: 0.82, baseR: 10, baseA: 0.58, p: Math.random() * 10 }
+    ];
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function drawFluid() {
+      octx.globalCompositeOperation = 'source-over';
+      octx.fillStyle = '#000';
+      octx.fillRect(0, 0, OW, OH);
+      octx.globalCompositeOperation = 'lighter';
+
+      for (const p of magenta) {
+        p.phase += 0.004 * p.speed;
+        p.x += p.vx + Math.sin(p.phase) * 0.08;
+        p.y += p.vy + Math.cos(p.phase * 0.7) * 0.08;
+        if (p.x < -p.r || p.x > OW + p.r) p.vx *= -1;
+        if (p.y < -p.r || p.y > OH + p.r) p.vy *= -1;
+        blob(p.x, p.y, p.r, p.a);
+      }
+
+      clump.t += 0.0035;
+      const cx = OW * (0.44 + 0.15 * Math.sin(clump.t * 0.9) + 0.07 * Math.sin(clump.t * 0.37 + 1.7));
+      const cy = OH * (0.46 + 0.16 * Math.sin(clump.t * 0.7 + 0.5) + 0.08 * Math.cos(clump.t * 0.53));
+
+      let gx = 0, gy = 0;
+      const positions = [];
+      for (const s of clump.parts) {
+        s.lerp += s.lerpSpeed;
+        if (s.lerp >= 1) {
+          s.lerp = 0;
+          s.current = { ...s.target };
+          s.target = randomPart();
+          s.lerpSpeed = 0.003 + Math.random() * 0.002;
+        }
+
+        const smoothT = s.lerp * s.lerp * (3 - 2 * s.lerp);
+        const spin = lerp(s.current.spin, s.target.spin, smoothT);
+        const dist = lerp(s.current.dist, s.target.dist, smoothT);
+        const baseR = lerp(s.current.baseR, s.target.baseR, smoothT);
+        const baseA = lerp(s.current.baseA, s.target.baseA, smoothT);
+        const wavePhase = lerp(s.current.wavePhase, s.target.wavePhase, smoothT);
+
+        s.ang += spin;
+        const d = dist * (0.7 + 0.3 * Math.sin(clump.t * 2 + s.ang * 3));
+        const x = cx + Math.cos(s.ang) * d;
+        const y = cy + Math.sin(s.ang) * d * 0.9;
+        gx += x;
+        gy += y;
+        positions.push({ x, y, baseR, baseA, wavePhase });
+      }
+      gx /= clump.parts.length;
+      gy /= clump.parts.length;
+
+      for (const p of positions) {
+        const dx = p.x - gx, dy = p.y - gy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const close = Math.max(0, 1 - dist / 26);
+        const pulse = Math.sin(clump.t * 3 + p.wavePhase) * 0.15;
+        const r = p.baseR + close * 18 + pulse * 4;
+        const a = p.baseA + close * 0.30 + pulse * 0.1;
+        blob(p.x, p.y, r, a);
+      }
+
+      for (const dr of drops) {
+        const x = OW * dr.bx + Math.sin(clump.t + dr.p) * 6;
+        const y = OH * dr.by + Math.cos(clump.t * 0.8 + dr.p) * 5;
+        const dx = x - gx, dy = y - gy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const close = Math.max(0, 1 - dist / 60);
+        const pulse = Math.sin(clump.t * 2.5 + dr.p * 1.3) * 0.2;
+        const r = dr.baseR + close * 12 + pulse * 3;
+        const a = dr.baseA + close * 0.15 + pulse * 0.08;
+        blob(x, y, r, a);
+      }
+
+      const img = octx.getImageData(0, 0, RW, RH);
+      const d = img.data;
+      for (let i = 0; i < d.length; i += 4) {
+        let t = d[i] / 255;
+        t = t * t * (3 - 2 * t);
+        t = t * t * (3 - 2 * t);
+        const j = (t * 255) | 0;
+        d[i]     = LUT[j * 3];
+        d[i + 1] = LUT[j * 3 + 1];
+        d[i + 2] = LUT[j * 3 + 2];
+        d[i + 3] = 255;
+      }
+      octx.putImageData(img, 0, 0);
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(off, 0, 0, width, height);
+
+      requestAnimationFrame(drawFluid);
+    }
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      ctx.imageSmoothingQuality = 'high';
+    });
+
+    requestAnimationFrame(drawFluid);
+  </script>
+
+  <script>
+    (function() {
+      const BASE = window.location.origin || 'http://localhost:8080';
+      const statusEl = document.getElementById('statusMessage');
+      const originalUrl = document.getElementById('originalUrl');
+      const shortPath = document.getElementById('shortPath');
+      const password = document.getElementById('password');
+      const qrContainer = document.getElementById('qrContainer');
+      const qrImg = document.getElementById('qrImg');
+      const qrPath = document.getElementById('qrPath');
+      const qrClose = document.getElementById('qrClose');
+      let lastShortUrl = null;
+
+      function hideQr() {
+        qrContainer.classList.remove('visible');
+        qrImg.onload = null;
+        qrImg.onerror = null;
+        qrImg.src = '';
+        qrPath.textContent = '';
+      }
+
+      function showQr(path) {
+        hideQr();
+        const url = `${BASE}/qr/${encodeURIComponent(path)}`;
+        qrImg.onload = () => {
+          qrPath.textContent = `/${path}`;
+          qrContainer.classList.add('visible');
+          setStatus('QR-код отображён ниже', 'info');
+        };
+        qrImg.onerror = () => {
+          qrContainer.classList.remove('visible');
+          qrImg.src = '';
+          qrPath.textContent = '';
+          setStatus('QR недоступен для «' + path + '» (404)', 'error');
+        };
+        qrImg.src = url;
+      }
+
+      qrClose.addEventListener('click', (e) => {
+        e.stopPropagation();
+        hideQr();
+      });
+
+      function setStatus(msg, type = '', clickable = false, clickUrl = null) {
+        statusEl.textContent = msg;
+        statusEl.className = 'footer-text' + (type ? ' ' + type : '') + (clickable ? ' clickable' : '');
+        lastShortUrl = clickUrl;
+      }
+
+      statusEl.addEventListener('click', () => {
+        if (lastShortUrl && navigator.clipboard) {
+          navigator.clipboard.writeText(lastShortUrl).then(() => {
+            const old = statusEl.textContent;
+            statusEl.textContent = 'Скопировано: ' + lastShortUrl;
+            setTimeout(() => { statusEl.textContent = old; }, 1500);
+          });
+        }
+      });
+
+      function generatePath() {
+        const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < 6; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+      }
+
+      async function callApi(endpoint, payload) {
+        try {
+          const resp = await fetch(`${BASE}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          let data;
+          try { data = await resp.json(); } catch (_) { data = { error: 'Некорректный ответ сервера' }; }
+          return { status: resp.status, data };
+        } catch (e) {
+          return { status: 0, data: { error: 'Сервер недоступен' } };
+        }
+      }
+
+      document.getElementById('createBtn').addEventListener('click', async () => {
+        hideQr();
+        const url = originalUrl.value.trim();
+        let path = shortPath.value.trim();
+        const pass = password.value.trim();
+
+        if (!url) {
+          setStatus('Укажите длинную ссылку', 'error');
+          return;
+        }
+
+        if (!path) {
+          path = generatePath();
+          shortPath.value = path;
+        }
+
+        setStatus('Генерация...', 'info');
+        const res = await callApi('/create', {
+          OriginalPath: url,
+          Path: path,
+          Password: pass || 'secret123'
+        });
+
+        if (res.status === 201 || res.status === 200) {
+          const shortUrl = `${BASE}/${path}`;
+          setStatus('Создано: ' + shortUrl + ' (клик — скопировать)', 'success', true, shortUrl);
+          if (navigator.clipboard) navigator.clipboard.writeText(shortUrl);
+          showQr(path);
+        } else {
+          setStatus(res.data?.error || 'Ошибка создания', 'error');
+        }
+      });
+
+      document.getElementById('infoBtn').addEventListener('click', async () => {
+        hideQr();
+        const path = shortPath.value.trim();
+        if (!path) {
+          setStatus('Введите короткий путь', 'error');
+          return;
+        }
+
+        setStatus('Запрос статистики...', 'info');
+        const res = await callApi('/info', { Path: path });
+
+        if (res.status === 200) {
+          setStatus(`Переходов: ${res.data.redirected || 0}`, 'success');
+        } else {
+          setStatus(res.data?.error || 'Не найдено', 'error');
+        }
+      });
+
+      document.getElementById('qrBtn').addEventListener('click', () => {
+        const path = shortPath.value.trim();
+        if (!path) {
+          setStatus('Введите короткий путь', 'error');
+          hideQr();
+          return;
+        }
+        setStatus('Загрузка QR...', 'info');
+        showQr(path);
+      });
+
+      document.getElementById('deleteBtn').addEventListener('click', async () => {
+        hideQr();
+        const path = shortPath.value.trim();
+        const pass = password.value.trim();
+
+        if (!path) {
+          setStatus('Укажите короткий путь', 'error');
+          return;
+        }
+
+        if (!pass) {
+          setStatus('Введите пароль', 'error');
+          return;
+        }
+
+        if (!confirm('Удалить ссылку?')) return;
+
+        setStatus('Удаление...', 'info');
+        const res = await callApi('/delete', {
+          Path: path,
+          Password: pass
+        });
+
+        if (res.status === 200) {
+          setStatus(`Удалено: ${path}`, 'success');
+          shortPath.value = '';
+        } else {
+          setStatus(res.data?.error || 'Ошибка удаления', 'error');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
