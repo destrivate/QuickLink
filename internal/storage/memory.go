@@ -19,11 +19,17 @@ func NewMemoryStorage() *MemoryStorage {
 func (m *MemoryStorage) Add(link models.Link) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	for _, l := range m.Data {
 		if l.Path == link.Path {
 			return false
 		}
 	}
+
+	if len(m.Data) >= 100 {
+		m.Data = m.Data[1:]
+	}
+
 	m.Data = append(m.Data, link)
 	return true
 }
@@ -52,6 +58,7 @@ func (m *MemoryStorage) Del(link string, pass string) bool {
 	}
 	return false
 }
+
 func (m *MemoryStorage) AddR(link string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()

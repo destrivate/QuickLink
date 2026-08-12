@@ -10,12 +10,17 @@ func (h *Handler) Redict(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Link code not specified", http.StatusBadRequest)
 		return
 	}
-	original := h.db.Get(path)
-
+	original := h.chache.Get(path)
 	if original == nil {
-		h.SendError(w, "NotFound", http.StatusNotFound)
-		return
+		original = h.db.Get(path)
+		if original == nil {
+			h.SendError(w, "NotFound", http.StatusNotFound)
+			return
+		}
+		h.chache.Add(*original)
 	}
-	h.db.AddR(path)
+	h.chache.AddR(path)
+
+	h.worker.AddRedictInPath <- path
 	http.Redirect(w, r, original.OriginalPath, http.StatusSeeOther)
 }

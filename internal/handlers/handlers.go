@@ -2,16 +2,19 @@ package handlers
 
 import (
 	"LinkShortener/internal/storage"
+	"LinkShortener/internal/worker"
 	"encoding/json"
 	"net/http"
 )
 
 type Handler struct {
-	db storage.Storage
+	db     storage.Storage
+	worker *worker.Workers
+	chache storage.Storage
 }
 
-func New(db storage.Storage) *Handler {
-	return &Handler{db: db}
+func New(db storage.Storage, worker *worker.Workers, chache storage.Storage) *Handler {
+	return &Handler{db: db, worker: worker, chache: chache}
 }
 
 func (h *Handler) SendError(w http.ResponseWriter, message string, statusCode int) {

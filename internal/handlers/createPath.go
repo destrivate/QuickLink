@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func (h *Handler) Create_Path(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreatePath(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method!", http.StatusMethodNotAllowed)
@@ -31,6 +31,7 @@ func (h *Handler) Create_Path(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.chache.Add(req)
 	h.SendJSON(w, http.StatusCreated, map[string]string{"success": "Success."})
 
 }

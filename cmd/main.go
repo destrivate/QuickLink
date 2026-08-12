@@ -3,28 +3,26 @@ package main
 import (
 	"LinkShortener/internal/handlers"
 	"LinkShortener/internal/storage"
+	"LinkShortener/internal/worker"
 	"net/http"
 )
 
 const (
-	dbPath      string = "./db/db.db"
-	storageType string = "mem" //sql || mem
+	dbPath string = "./db/db.db"
 )
 
 func main() {
-	var db storage.Storage = nil
-	if storageType == "sql" {
-		db = storage.NewSQLStorage(dbPath)
-	}
-	if storageType == "mem" {
-		db = storage.NewMemoryStorage()
-	}
 
-	handler := handlers.New(db)
+	db := storage.NewSQLStorage(dbPath)
+	chacheDb := storage.NewMemoryStorage()
+	worker := worker.NewWorker(db)
+	go worker.AddR()
+	go worker.DelPath()
+	handler := handlers.New(db, worker, chacheDb)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{value}", handler.Redict)
 	mux.HandleFunc("GET /qr/{value}", handler.Qr)
-	mux.HandleFunc("POST /create", handler.Create_Path)
+	mux.HandleFunc("POST /create", handler.CreatePath)
 	mux.HandleFunc("POST /info", handler.Info)
 	mux.HandleFunc("POST /delete", handler.Delete)
 	mux.HandleFunc("GET /{$}", handlers.Home)

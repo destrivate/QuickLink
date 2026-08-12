@@ -24,10 +24,13 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request) {
 		h.SendError(w, "All fields are required.", http.StatusBadRequest)
 		return
 	}
-	red := h.db.Get(data.Path)
+	red := h.chache.Get(data.Path)
 	if red == nil {
-		h.SendError(w, "NotFound", http.StatusNotFound)
-		return
+		red = h.db.Get(data.Path)
+		if red == nil {
+			h.SendError(w, "NotFound", http.StatusNotFound)
+			return
+		}
 	}
 
 	h.SendJSON(w, http.StatusOK, map[string]string{"redirected": strconv.Itoa(red.Redirected)})

@@ -24,10 +24,13 @@ func (h *Handler) Qr(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Link code not specified", http.StatusBadRequest)
 		return
 	}
-	original := h.db.Get(path)
+	original := h.chache.Get(path)
 	if original == nil {
-		http.NotFound(w, r)
-		return
+		original = h.db.Get(path)
+		if original == nil {
+			http.NotFound(w, r)
+			return
+		}
 	}
 	png, _ := qrcode.Encode("http://localhost:8080/"+path, qrcode.Medium, 256)
 	w.Header().Set("Content-Type", "image/png")
