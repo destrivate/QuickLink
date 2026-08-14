@@ -4,25 +4,20 @@ import (
 	"LinkShortener/internal/models"
 	"database/sql"
 	"errors"
-	"time"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/lib/pq"
 )
 
 type SQLStorage struct {
-	dbPath string
-	db     *sql.DB
+	db *sql.DB
 }
 
-func NewSQLStorage(dbPath string) *SQLStorage {
-	db, err := sql.Open("sqlite", dbPath)
+func NewSQLStorage(connStr string) *SQLStorage {
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil
 	}
 
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-	db.SetConnMaxLifetime(5 * time.Minute)
 	err = db.Ping()
 	if err != nil {
 		db.Close()
@@ -30,13 +25,7 @@ func NewSQLStorage(dbPath string) *SQLStorage {
 	}
 
 	s := &SQLStorage{
-		dbPath: dbPath,
-		db:     db,
-	}
-
-	if _, err := db.Exec("PRAGMA journal_mode=WAL;"); err != nil {
-		db.Close()
-		return nil
+		db: db,
 	}
 
 	if err := s.migrate(); err != nil {
@@ -61,7 +50,7 @@ func (s *SQLStorage) migrate() error {
 }
 
 func (s *SQLStorage) Add(link models.Link) bool {
-	query := `INSERT INTO links (path, original_url, password, redirected) VALUES (?, ?, ?, ?);`
+	query := `INSERT INTO links (path, original_url, password, redirected) VALUES ($1, $2, $3, $4);`
 
 	_, err := s.db.Exec(query, link.Path, link.OriginalPath, link.Password, link.Redirected)
 	if err != nil {
@@ -71,7 +60,7 @@ func (s *SQLStorage) Add(link models.Link) bool {
 }
 
 func (s *SQLStorage) Get(link string) *models.Link {
-	query := `SELECT path, original_url, password, redirected FROM links WHERE path = ?;`
+	query := `SELECT path, original_url, password, redirected FROM links WHERE path = $1;`
 
 	var l models.Link
 	err := s.db.QueryRow(query, link).Scan(&l.Path, &l.OriginalPath, &l.Password, &l.Redirected)
@@ -85,7 +74,7 @@ func (s *SQLStorage) Get(link string) *models.Link {
 }
 
 func (s *SQLStorage) Del(link string, pass string) bool {
-	query := `DELETE FROM links WHERE path = ? AND password = ?;`
+	query := `DELETE FROM links WHERE path = $1 AND password = $2;`
 
 	res, err := s.db.Exec(query, link, pass)
 	if err != nil {
@@ -100,7 +89,7 @@ func (s *SQLStorage) Del(link string, pass string) bool {
 }
 
 func (s *SQLStorage) AddR(link string) bool {
-	query := `UPDATE links SET redirected = redirected + 1 WHERE path = ?;`
+	query := `UPDATE links SET redirected = redirected + 1 WHERE path = $1;`
 
 	res, err := s.db.Exec(query, link)
 	if err != nil {

@@ -4,16 +4,20 @@ import (
 	"LinkShortener/internal/handlers"
 	"LinkShortener/internal/storage"
 	"LinkShortener/internal/worker"
+	"fmt"
 	"net/http"
 )
 
 const (
-	dbPath string = "./db/db.db"
+	connStr string = "host=94.156.237.65 port=5432 user=postgres password=test"
 )
 
 func main() {
 
-	db := storage.NewSQLStorage(dbPath)
+	db := storage.NewSQLStorage(connStr)
+	if db == nil {
+		fmt.Println("DB error")
+	}
 	chacheDb := storage.NewMemoryStorage()
 	worker := worker.NewWorker(db)
 	go worker.AddR()
