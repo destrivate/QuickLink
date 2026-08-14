@@ -5,11 +5,8 @@ import (
 	"os"
 )
 
-func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-	}
-	html, err := os.ReadFile("./templates/index.html")
+func (h *Handler) Error(w http.ResponseWriter, r *http.Request) {
+	html, err := os.ReadFile("./templates/404.html")
 	if err != nil {
 		http.Error(w, "File not found", http.StatusNotFound)
 		return

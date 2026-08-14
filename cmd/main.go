@@ -9,14 +9,14 @@ import (
 )
 
 const (
-	connStr string = "host=94.156.237.65 port=5432 user=postgres password=test"
+	connStr string = ""
 )
 
 func main() {
 
-	db := storage.NewSQLStorage(connStr)
-	if db == nil {
-		fmt.Println("DB error")
+	db, err := storage.NewPostgresStorage(connStr)
+	if err != nil {
+		fmt.Println(err)
 	}
 	chacheDb := storage.NewMemoryStorage()
 	worker := worker.NewWorker(db)
@@ -29,6 +29,7 @@ func main() {
 	mux.HandleFunc("POST /create", handler.CreatePath)
 	mux.HandleFunc("POST /info", handler.Info)
 	mux.HandleFunc("POST /delete", handler.Delete)
-	mux.HandleFunc("GET /{$}", handlers.Home)
+	mux.HandleFunc("GET /{$}", handler.Home)
+	mux.HandleFunc("GET /404", handler.Error)
 	http.ListenAndServe(":8080", mux)
 }

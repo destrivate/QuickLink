@@ -12,16 +12,16 @@ type SQLStorage struct {
 	db *sql.DB
 }
 
-func NewSQLStorage(connStr string) *SQLStorage {
+func NewPostgresStorage(connStr string) (*SQLStorage, error) {
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return nil
+		return &SQLStorage{db: nil}, err
 	}
 
 	err = db.Ping()
 	if err != nil {
 		db.Close()
-		return nil
+		return &SQLStorage{db: nil}, err
 	}
 
 	s := &SQLStorage{
@@ -30,10 +30,10 @@ func NewSQLStorage(connStr string) *SQLStorage {
 
 	if err := s.migrate(); err != nil {
 		db.Close()
-		return nil
+		return &SQLStorage{db: nil}, err
 	}
 
-	return s
+	return s, nil
 }
 
 func (s *SQLStorage) migrate() error {

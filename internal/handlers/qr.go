@@ -1,22 +1,11 @@
 package handlers
 
 import (
+	"LinkShortener/internal/utils"
 	"net/http"
 
 	"github.com/skip2/go-qrcode"
 )
-
-func get_host(r *http.Request) string {
-	scheme := "http"
-	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-		scheme = "https"
-	}
-
-	host := r.Host
-
-	fullURL := scheme + "://" + host + "/"
-	return fullURL
-}
 
 func (h *Handler) Qr(w http.ResponseWriter, r *http.Request) {
 	path := r.PathValue("value")
@@ -32,7 +21,7 @@ func (h *Handler) Qr(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	png, _ := qrcode.Encode("http://localhost:8080/"+path, qrcode.Medium, 256)
+	png, _ := qrcode.Encode(utils.GetHost(r)+path, qrcode.Medium, 256)
 	w.Header().Set("Content-Type", "image/png")
 	w.Write(png)
 }

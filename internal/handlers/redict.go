@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"LinkShortener/internal/utils"
 	"net/http"
 )
 
@@ -14,7 +15,7 @@ func (h *Handler) Redict(w http.ResponseWriter, r *http.Request) {
 	if original == nil {
 		original = h.db.Get(path)
 		if original == nil {
-			h.SendError(w, "NotFound", http.StatusNotFound)
+			http.Redirect(w, r, utils.GetHost(r)+"/404", http.StatusNotFound)
 			return
 		}
 		h.chache.Add(*original)
