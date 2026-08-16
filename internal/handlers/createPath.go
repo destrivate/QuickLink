@@ -26,6 +26,16 @@ func (h *Handler) CreatePath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(req.Path) > 12 || len(req.Password) > 12 {
+		h.SendError(w, "The short link and password cannot be longer than 12 characters!", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.OriginalPath) > 128 {
+		h.SendError(w, "The link cannot be longer than 128 characters!", http.StatusBadRequest)
+		return
+	}
+
 	if !h.db.Add(req) {
 		h.SendError(w, "This identifier is busy!", http.StatusBadRequest)
 		return

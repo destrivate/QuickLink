@@ -20,7 +20,7 @@ func main() {
 	}
 	chacheDb := storage.NewMemoryStorage()
 	worker := worker.NewWorker(db)
-	go worker.AddR()
+	go worker.AddAnalitic()
 	go worker.DelPath()
 	handler := handlers.New(db, worker, chacheDb)
 	mux := http.NewServeMux()

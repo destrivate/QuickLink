@@ -17,7 +17,7 @@ func NewWorker(db storage.Storage) *Workers {
 	return &Workers{AddRedictInPath: make(chan string, 1000), DelPathInChache: make(chan DelStruct, 1000), db: db}
 }
 
-func (w *Workers) AddR() {
+func (w *Workers) AddAnalitic() {
 	for r := range w.AddRedictInPath {
 		w.db.AddR(r)
 	}
